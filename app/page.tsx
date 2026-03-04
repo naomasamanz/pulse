@@ -9,10 +9,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans">
-      {/* ヘッダー */}
-      <header className="border-b border-zinc-800 p-4 sticky top-0 bg-black/80 backdrop-blur-md">
-        <h1 className="text-2xl font-black italic tracking-tighter text-white">pulse</h1>
-      </header>
 
       <main className="max-w-2xl mx-auto">
         {/* 投稿フォームエリア */}
