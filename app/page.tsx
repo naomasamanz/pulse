@@ -5,8 +5,7 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import LandingPage from "./components/LandingPage";
 
-// ★自分の管理用IDをここに入れる（Clerkのダッシュボードか、console.log(user.id)で確認してね）
-const ADMIN_USER_ID = "user_2tmS..."; 
+const ADMIN_USER_ID = "user_3AT5oMVRngSjFmGA1C4FTPKwDU5"; 
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
