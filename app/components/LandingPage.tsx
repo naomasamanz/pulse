@@ -5,7 +5,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-white flex flex-col md:flex-row font-sans">
       {/* 左半分：巨大ロゴ */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <h1 className="text-[80px] md:text-[180px] font-black tracking-tighter hover:scale-105 transition-transform cursor-default">
+        <h1 className="text-[70px] md:text-[140px] font-black tracking-tighter hover:scale-105 transition-transform cursor-default">
           pulse
         </h1>
       </div>
