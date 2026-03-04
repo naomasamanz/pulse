@@ -1,12 +1,5 @@
 import type { Metadata } from 'next'
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/nextjs'
+import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,25 +15,8 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="ja">
+        {/* body から header を消して children だけにするよ */}
         <body className="antialiased bg-black text-white">
-          <header className="flex justify-between items-center p-4 h-16 border-b border-zinc-800">
-            <h1 className="text-xl font-bold italic">pulse</h1>
-            <div className="flex gap-4">
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <button className="text-sm font-medium">Log in</button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="bg-white text-black rounded-full text-sm font-bold px-4 py-2">
-                    Sign Up
-                  </button>
-                </SignUpButton>
-              </SignedOut>
-              <SignedIn>
-                <UserButton afterSignOutUrl="/" />
-              </SignedIn>
-            </div>
-          </header>
           {children}
         </body>
       </html>
