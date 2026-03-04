@@ -12,12 +12,12 @@ export default function LandingPage() {
 
       {/* 右半分：登録エリア */}
       <div className="flex-1 flex flex-col justify-center p-8 md:p-24 bg-zinc-950/30">
-        <h2 className="text-5xl md:text-7xl font-black mb-16 leading-[1.1] tracking-tight">
+        <h2 className="text-4xl md:text-5xl font-black mb-16 leading-[1.1] tracking-tight">
           すべての話題が、<br />いま、ここに。
         </h2>
         
         <div className="max-w-[320px] space-y-10">
-          <h3 className="text-3xl font-bold tracking-tight">今すぐ参加しましょう。</h3>
+          <h3 className="text-2xl font-bold tracking-tight">今すぐ参加しましょう。</h3>
           
           <div className="space-y-4">
             {/* Clerkのログインボタンをラップする */}
