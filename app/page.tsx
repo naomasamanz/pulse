@@ -21,7 +21,6 @@ export default function Home() {
   const [newUsername, setNewUsername] = useState("");
 
   const fetchData = async () => {
-    // 投稿と、その投稿者のアイコンURLを一緒に持ってくる魔法の1行
     const { data: postData } = await supabase
       .from("posts")
       .select(`
@@ -112,7 +111,6 @@ export default function Home() {
           <h2 className="text-xl font-bold mb-4">Home</h2>
           <div className="flex gap-4">
             <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden border border-zinc-700">
-               {/* 自分のアイコンを表示 */}
                <img src={myProfile?.avatar_url || user.imageUrl} alt="user" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
@@ -141,7 +139,6 @@ export default function Home() {
           {posts.map((post) => (
             <div key={post.id} className="p-4 hover:bg-zinc-900/30 transition-colors group relative">
               <div className="flex gap-3">
-                {/* タイムラインの投稿者のアイコンを表示！ */}
                 <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden border border-zinc-800">
                   {post.profiles?.avatar_url ? (
                     <img src={post.profiles.avatar_url} className="w-full h-full object-cover" />
