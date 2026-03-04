@@ -5,6 +5,9 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import LandingPage from "./components/LandingPage";
 
+// ★自分の管理用IDをここに入れる（Clerkのダッシュボードか、console.log(user.id)で確認してね）
+const ADMIN_USER_ID = "user_2tmS..."; 
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -38,6 +41,22 @@ export default function Home() {
     if (isLoaded) fetchData();
   }, [user, isLoaded]);
 
+  // ★投稿削除用の関数
+  const handleDelete = async (postId: number) => {
+    if (!confirm("この投稿を削除しますか？")) return;
+    
+    const { error } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", postId);
+    
+    if (error) {
+      alert("削除に失敗しました");
+    } else {
+      fetchData(); // タイムラインを更新
+    }
+  };
+
   const handleRegister = async () => {
     if (!newUsername || !user) return;
     const { error } = await supabase
@@ -64,11 +83,8 @@ export default function Home() {
   };
 
   if (!isLoaded) return <div className="text-white p-4 text-center">Loading...</div>;
-
-  // 未ログイン時はあのカッコいい画面を表示
   if (!user) return <LandingPage />;
 
-  // プロフィール未登録時の画面
   if (user && !myProfile) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
@@ -88,21 +104,16 @@ export default function Home() {
     );
   }
 
-  // ログイン後のメイン画面
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* 右上のユーザーアイコン（ログアウト用） */}
       <div className="fixed top-4 right-4 z-50 bg-black/50 p-1 rounded-full backdrop-blur-md">
         <UserButton afterSignOutUrl="/" />
       </div>
 
       <main className="max-w-2xl mx-auto border-x border-zinc-800 min-h-screen">
-        {/* 投稿エリア */}
         <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10">
           <div className="flex gap-4">
-            <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden">
-               {/* 自分のアイコンをここに表示することも可能 */}
-            </div>
+            <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0" />
             <div className="flex-1">
               <textarea
                 className="w-full bg-transparent text-xl outline-none resize-none placeholder-zinc-600"
@@ -125,25 +136,36 @@ export default function Home() {
           </div>
         </div>
 
-        {/* タイムライン */}
         <div className="divide-y divide-zinc-800">
           {posts.map((post) => (
-            <div key={post.id} className="p-4 hover:bg-zinc-900/30 transition-colors">
+            <div key={post.id} className="p-4 hover:bg-zinc-900/30 transition-colors group relative">
               <div className="flex gap-3">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold hover:underline cursor-pointer">@{post.username}</span>
-                    <span className="text-zinc-500 text-sm">· 今</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold hover:underline cursor-pointer">@{post.username}</span>
+                      <span className="text-zinc-500 text-sm">· 今</span>
+                    </div>
+
+                    {/* ★管理者（あなた）だけに表示される削除ボタン */}
+                    {user.id === ADMIN_USER_ID && (
+                      <button 
+                        onClick={() => handleDelete(post.id)}
+                        className="text-zinc-600 hover:text-red-500 transition-colors p-1"
+                        title="投稿を削除"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                   <p className="mt-1 text-[15px] leading-normal">{post.content}</p>
                   
-                  {/* アクションボタン（飾り） */}
                   <div className="flex justify-between mt-3 max-w-md text-zinc-500">
-                    <button className="hover:text-blue-400 transition-colors">💬 0</button>
-                    <button className="hover:text-green-400 transition-colors">🔄 0</button>
-                    <button className="hover:text-pink-400 transition-colors">❤️ 0</button>
-                    <button className="hover:text-blue-400 transition-colors">📊 0</button>
+                    <button className="hover:text-blue-400">💬 0</button>
+                    <button className="hover:text-green-400">🔄 0</button>
+                    <button className="hover:text-pink-400">❤️ 0</button>
+                    <button className="hover:text-blue-400">📊 0</button>
                   </div>
                 </div>
               </div>
