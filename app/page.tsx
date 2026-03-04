@@ -17,20 +17,22 @@ export default function Home() {
   const { user, isLoaded } = useUser();
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
-  // avatar_url を保持できるように myProfile の型を拡張
   const [myProfile, setMyProfile] = useState<{ username: string; avatar_url?: string } | null>(null);
   const [newUsername, setNewUsername] = useState("");
 
   const fetchData = async () => {
-    // 投稿一覧を取得
+    // 投稿一覧と、投稿したユーザーのプロフィール（アイコン）を紐付けて取得
     const { data: postData } = await supabase
       .from("posts")
-      .select("*")
+      .select(`
+        *,
+        profiles:username (avatar_url)
+      `)
       .order("created_at", { ascending: false });
+    
     if (postData) setPosts(postData);
 
     if (user) {
-      // プロフィール取得時に avatar_url も一緒に持ってくるように追加
       const { data: profileData } = await supabase
         .from("profiles")
         .select("username, avatar_url")
@@ -47,11 +49,7 @@ export default function Home() {
   const handleDelete = async (postId: number) => {
     if (!confirm("この投稿を削除しますか？")) return;
     const { error } = await supabase.from("posts").delete().eq("id", postId);
-    if (error) {
-      alert("削除に失敗しました");
-    } else {
-      fetchData();
-    }
+    if (!error) fetchData();
   };
 
   const handleRegister = async () => {
@@ -60,9 +58,7 @@ export default function Home() {
       .from("profiles")
       .insert([{ id: user.id, username: newUsername }]);
     
-    if (error) {
-      alert(`登録エラー: ${error.message}`);
-    } else {
+    if (!error) {
       setMyProfile({ username: newUsername });
       fetchData();
     }
@@ -104,10 +100,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white font-sans">
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-black/60 p-1.5 pl-4 rounded-full backdrop-blur-md border border-zinc-800 shadow-xl">
-        <Link 
-          href="/profile" 
-          className="text-sm font-bold hover:text-zinc-400 transition-colors"
-        >
+        <Link href="/profile" className="text-sm font-bold hover:text-zinc-400 transition-colors">
           My Profile
         </Link>
         <div className="w-[1px] h-4 bg-zinc-700 mx-1" />
@@ -119,7 +112,6 @@ export default function Home() {
           <h2 className="text-xl font-bold mb-4">Home</h2>
           <div className="flex gap-4">
             <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden border border-zinc-700">
-               {/* 自分のアイコン：カスタムがあればそれ、なければClerkの画像を使うように変更 */}
                <img src={myProfile?.avatar_url || user.imageUrl} alt="user" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
@@ -148,23 +140,22 @@ export default function Home() {
           {posts.map((post) => (
             <div key={post.id} className="p-4 hover:bg-zinc-900/30 transition-colors group relative">
               <div className="flex gap-3">
-                {/* タイムラインのアイコン（将来的に他人のアイコンも出せるように今は汎用グラデーションをキープ、またはお好みで myProfile?.avatar_url に変更可能） */}
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex-shrink-0" />
+                {/* タイムラインのアイコンを動的に変更！ */}
+                <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden border border-zinc-800">
+                  {post.profiles?.avatar_url ? (
+                    <img src={post.profiles.avatar_url} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-900" />
+                  )}
+                </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-bold hover:underline cursor-pointer">@{post.username}</span>
                       <span className="text-zinc-500 text-sm">· 今</span>
                     </div>
-
                     {user.id === ADMIN_USER_ID && (
-                      <button 
-                        onClick={() => handleDelete(post.id)}
-                        className="text-zinc-600 hover:text-red-500 transition-colors p-1"
-                        title="投稿を削除"
-                      >
-                        🗑️
-                      </button>
+                      <button onClick={() => handleDelete(post.id)} className="text-zinc-600 hover:text-red-500 transition-colors p-1">🗑️</button>
                     )}
                   </div>
                   <p className="mt-1 text-[15px] leading-normal">{post.content}</p>
