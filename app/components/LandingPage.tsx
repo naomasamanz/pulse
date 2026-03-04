@@ -19,19 +19,26 @@ export default function LandingPage() {
         <div className="max-w-[320px] space-y-10">
           <h3 className="text-2xl font-bold tracking-tight">今すぐ参加しましょう。</h3>
           
-          <div className="space-y-4">
-            {/* Clerkのログインボタンをラップする */}
-            <SignInButton mode="modal">
-              <button className="w-full bg-white text-black rounded-full py-3.5 font-bold text-lg hover:bg-zinc-200 transition-all shadow-lg active:scale-95">
-                Googleでログイン
-              </button>
-            </SignInButton>
+          {/* 修正後のボタン部分 */}
+<div className="space-y-3">
+  <SignInButton mode="modal">
+    <button className="w-full bg-white text-black rounded-full py-2.5 font-bold text-base hover:bg-zinc-200 transition-all shadow-lg active:scale-95">
+      Googleでログイン
+    </button>
+  </SignInButton>
 
-            <div className="flex items-center gap-4 text-zinc-600">
-              <div className="h-[1px] bg-zinc-800 flex-1"></div>
-              <span className="text-xs font-bold uppercase tracking-widest">or</span>
-              <div className="h-[1px] bg-zinc-800 flex-1"></div>
-            </div>
+  <div className="flex items-center gap-4 text-zinc-600">
+    <div className="h-[1px] bg-zinc-800 flex-1"></div>
+    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">or</span>
+    <div className="h-[1px] bg-zinc-800 flex-1"></div>
+  </div>
+
+  <SignInButton mode="modal">
+    <button className="w-full border border-zinc-700 text-blue-400 rounded-full py-2.5 font-bold text-base hover:bg-blue-400/10 transition-all active:scale-95">
+      アカウントを作成
+    </button>
+  </SignInButton>
+</div>
 
             <SignInButton mode="modal">
               <button className="w-full border border-zinc-700 text-blue-400 rounded-full py-3.5 font-bold text-lg hover:bg-blue-400/10 transition-all active:scale-95">
