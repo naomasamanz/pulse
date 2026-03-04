@@ -17,10 +17,12 @@ export default function Home() {
   const { user, isLoaded } = useUser();
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
-  const [myProfile, setMyProfile] = useState<{ username: string } | null>(null);
+  // avatar_url を保持できるように myProfile の型を拡張
+  const [myProfile, setMyProfile] = useState<{ username: string; avatar_url?: string } | null>(null);
   const [newUsername, setNewUsername] = useState("");
 
   const fetchData = async () => {
+    // 投稿一覧を取得
     const { data: postData } = await supabase
       .from("posts")
       .select("*")
@@ -28,9 +30,10 @@ export default function Home() {
     if (postData) setPosts(postData);
 
     if (user) {
+      // プロフィール取得時に avatar_url も一緒に持ってくるように追加
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("username")
+        .select("username, avatar_url")
         .eq("id", user.id)
         .single();
       if (profileData) setMyProfile(profileData);
@@ -100,7 +103,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans">
-      {/* 右上のナビゲーションエリア */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-black/60 p-1.5 pl-4 rounded-full backdrop-blur-md border border-zinc-800 shadow-xl">
         <Link 
           href="/profile" 
@@ -108,7 +110,7 @@ export default function Home() {
         >
           My Profile
         </Link>
-        <div className="w-[1px] h-4 bg-zinc-700 mx-1" /> {/* 区切り線 */}
+        <div className="w-[1px] h-4 bg-zinc-700 mx-1" />
         <UserButton afterSignOutUrl="/" />
       </div>
 
@@ -116,8 +118,9 @@ export default function Home() {
         <div className="p-4 border-b border-zinc-800 sticky top-0 bg-black/80 backdrop-blur-md z-10">
           <h2 className="text-xl font-bold mb-4">Home</h2>
           <div className="flex gap-4">
-            <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden">
-               <img src={user.imageUrl} alt="user" className="w-full h-full object-cover" />
+            <div className="w-12 h-12 rounded-full bg-zinc-800 flex-shrink-0 overflow-hidden border border-zinc-700">
+               {/* 自分のアイコン：カスタムがあればそれ、なければClerkの画像を使うように変更 */}
+               <img src={myProfile?.avatar_url || user.imageUrl} alt="user" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
               <textarea
@@ -145,6 +148,7 @@ export default function Home() {
           {posts.map((post) => (
             <div key={post.id} className="p-4 hover:bg-zinc-900/30 transition-colors group relative">
               <div className="flex gap-3">
+                {/* タイムラインのアイコン（将来的に他人のアイコンも出せるように今は汎用グラデーションをキープ、またはお好みで myProfile?.avatar_url に変更可能） */}
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
