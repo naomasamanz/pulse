@@ -1,9 +1,14 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import Script from 'next/script' // これを追加
 
-export const metadata = {
-  title: 'pulse',
-}
+export const metadata: Metadata = {
+  title: "PULSE",
+  description: "あなたの鼓動を世界へ",
+  // 👇 ここにコピーしたコードの content の中身を入れる！
+  verification: {
+    google: "nspDi4qQ83TID9WMpEf9JUCo5P42bi2hEo3hXdRu-vY",
+  },
+};
 
 export default function RootLayout({
   children,
