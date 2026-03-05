@@ -13,7 +13,8 @@
     "react": "rc",
     "react-dom": "rc",
     "@clerk/nextjs": "latest",
-    "@supabase/supabase-js": "latest"
+    "@supabase/supabase-js": "latest",
+    "lucide-react": "latest"
   },
   "devDependencies": {
     "@types/node": "^20",
