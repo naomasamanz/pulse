@@ -59,7 +59,7 @@ export default function Home() {
 
           <div className="mt-auto mb-4 p-3 flex items-center gap-3 hover:bg-white/10 rounded-full transition cursor-pointer w-fit lg:w-full">
             <UserButton />
-            <span className="font-bold text-sm hidden lg:inline">設定</span>
+            <span className="font-bold text-sm hidden lg:inline"></span>
           </div>
         </aside>
 
