@@ -1,11 +1,7 @@
-import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
-// 【重要】もし globals.css が空でも、このインポートは必要だよ！
-import "./globals.css";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'pulse',
-  description: 'pulse system',
 }
 
 export default function RootLayout({
@@ -16,7 +12,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="ja">
-        <body className="bg-black text-white">
+        <body style={{ backgroundColor: 'black', color: 'white' }}>
           {children}
         </body>
       </html>
