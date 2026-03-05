@@ -39,12 +39,11 @@ export default function Home() {
     <div className="flex justify-center min-h-screen bg-black text-white">
       <div className="flex w-full max-w-[1300px] justify-start">
         
-        {/* 🟢 サイドバー：左端に固定し、大きな画面では幅を確保 */}
+        {/* 🟢 サイドバー：左端に固定 */}
         <aside className="w-20 lg:w-64 hidden md:flex flex-col sticky top-0 h-screen p-2 lg:p-4 border-r border-gray-800 items-center lg:items-start">
           <div className="mb-8 px-4 text-3xl font-black tracking-tighter italic text-blue-500 hidden lg:block">
             PULSE
           </div>
-          {/* 小さい画面用のロゴ（Pだけ） */}
           <div className="mb-8 text-3xl font-black text-blue-500 lg:hidden block">
             P
           </div>
@@ -57,9 +56,9 @@ export default function Home() {
             <SidebarItem icon={<User size={28} />} label="プロフィール" />
           </nav>
 
-          <div className="mt-auto mb-4 p-3 flex items-center gap-3 hover:bg-white/10 rounded-full transition cursor-pointer w-fit lg:w-full">
+          <div className="mt-auto mb-4 p-3 flex items-center gap-3 hover:bg-white/10 rounded-full transition cursor-pointer w-fit lg:w-full text-gray-400 hover:text-white">
             <UserButton />
-            <span className="font-bold text-sm hidden lg:inline"></span>
+            <span className="font-bold text-sm hidden lg:inline ml-1">アカウント</span>
           </div>
         </aside>
 
@@ -75,29 +74,50 @@ export default function Home() {
           <PostForm onPostSuccess={handleNewPost} />
 
           <div className="divide-y divide-gray-800">
-            {posts.map((post) => (
-              <article key={post.id} className="p-6 hover:bg-white/[0.02] transition-colors group">
-                <div className="mb-3">
-                  <h2 className="text-2xl font-extrabold text-white mb-2 break-words">
-                    {post.title || "無題の投稿"}
-                  </h2>
-                  <p className="text-gray-400 text-lg leading-relaxed break-words whitespace-pre-wrap">
-                    {post.content}
-                  </p>
-                </div>
-                
-                <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
-                    <span className="font-medium text-blue-400">@{post.user_id.slice(0, 8)}</span>
+            {posts.length > 0 ? (
+              posts.map((post) => (
+                <article key={post.id} className="p-6 hover:bg-white/[0.02] transition-colors group">
+                  <div className="mb-3">
+                    <h2 className="text-2xl font-extrabold text-white mb-2 break-words">
+                      {post.title || "無題の投稿"}
+                    </h2>
+                    <p className="text-gray-400 text-lg leading-relaxed break-words whitespace-pre-wrap mb-4">
+                      {post.content}
+                    </p>
+
+                    {/* 🌟 投稿に画像があれば表示するエリア */}
+                    {post.image_url && (
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800">
+                        <img 
+                          src={post.image_url} 
+                          alt="Post content" 
+                          className="w-full h-auto max-h-[512px] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} />
-                    <time>{new Date(post.created_at).toLocaleDateString()}</time>
+                  
+                  <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full shadow-sm shadow-blue-500/20" />
+                      <span className="font-medium text-blue-400/80">@{post.user_id.slice(0, 8)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-60">
+                      <Clock size={12} />
+                      <time>{new Date(post.created_at).toLocaleDateString('ja-JP', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}</time>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))
+            ) : (
+              <div className="p-20 text-center text-gray-600 italic">
+                まだ投稿がありません。最初の pulse を刻もう。
+              </div>
+            )}
           </div>
 
           <footer className="py-12 px-4 border-t border-gray-800 text-gray-500 text-center">
@@ -108,9 +128,12 @@ export default function Home() {
           </footer>
         </main>
 
-        {/* 🔵 右側の余白エリア（将来の「おすすめ」枠） */}
+        {/* 🔵 右側の余白エリア */}
         <div className="hidden xl:block w-80 p-4">
-          {/* ここは空けておくことで、メインが中央に寄って見えるよ */}
+          <div className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
+            <h3 className="text-lg font-bold mb-4">いまどうしてる？</h3>
+            <p className="text-sm text-gray-500 italic">Coming Soon...</p>
+          </div>
         </div>
       </div>
     </div>
@@ -119,7 +142,7 @@ export default function Home() {
 
 function SidebarItem({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) {
   return (
-    <div className={`flex items-center gap-4 px-4 py-3 rounded-full cursor-pointer transition-all hover:bg-white/10 active:scale-95 w-fit lg:w-full ${active ? "font-bold text-white" : "text-gray-400"}`}>
+    <div className={`flex items-center gap-4 px-4 py-3 rounded-full cursor-pointer transition-all hover:bg-white/10 active:scale-95 w-fit lg:w-full ${active ? "font-bold text-white bg-white/5" : "text-gray-400"}`}>
       {icon}
       <span className="text-xl hidden lg:inline">{label}</span>
     </div>
