@@ -100,6 +100,7 @@ export default function Home() {
           <div className="flex flex-col items-center gap-2 border-t border-gray-900 pt-6 w-full max-w-xs">
             <p className="text-[10px] tracking-[0.2em]">
               © 2026 PULSE INC. ALL RIGHTS RESERVED.
+            </p>
             </div>
           </div>
         </div>
