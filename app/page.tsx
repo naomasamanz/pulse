@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import PostForm from "./components/PostForm";
 import { useUser, UserButton } from "@clerk/nextjs";
 import LandingPage from "./components/LandingPage";
-// 🌟 Lucideアイコンをインポート
+// Lucideアイコンをインポート
 import { Home as HomeIcon, Search, Bell, Mail, User, Trash2, Clock } from "lucide-react";
 
 const supabase = createClient(
