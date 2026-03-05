@@ -12,7 +12,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="ja">
-        <body style={{ backgroundColor: 'black', color: 'white' }}>
+        <body style={{ backgroundColor: 'black', color: 'white', margin: 0 }}>
           {children}
         </body>
       </html>
