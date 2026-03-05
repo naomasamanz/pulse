@@ -1,5 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs'
-import Script from 'next/script' // これを追加
+import Script from 'next/script'
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: "PULSE",
