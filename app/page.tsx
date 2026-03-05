@@ -77,6 +77,34 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* 投稿一覧のあとに続くフッター */}
+      <footer className="py-12 px-4 border-t border-gray-800 bg-black text-gray-500">
+        <div className="flex flex-col items-center gap-6">
+          {/* サイトロゴや野望を感じさせるテキスト */}
+          <div className="text-center">
+            <h2 className="text-white font-bold text-xl mb-1 tracking-widest uppercase">pulse</h2>
+            <p className="text-sm italic">Connecting the world, one heartbeat at a time.</p>
+          </div>
+
+          {/* リンク集（今はダミーだけど、大規模化したらここが増える！） */}
+          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-xs font-medium uppercase tracking-tighter">
+            <a href="#" className="hover:text-white transition">About</a>
+            <a href="#" className="hover:text-white transition">Terms</a>
+            <a href="#" className="hover:text-white transition">Privacy</a>
+            <a href="#" className="hover:text-white transition">Contact</a>
+            <a href="#" className="hover:text-white transition">Help</a>
+          </nav>
+
+          {/* コピーライト（マジのSNSっぽいやつ） */}
+          <div className="flex flex-col items-center gap-2 border-t border-gray-900 pt-6 w-full max-w-xs">
+            <p className="text-[10px] tracking-[0.2em]">
+              © 2026 PULSE INC. ALL RIGHTS RESERVED.
+            </div>
+          </div>
+        </div>
+      </footer>
+      
     </main>
   );
 }
