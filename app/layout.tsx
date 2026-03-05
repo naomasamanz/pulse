@@ -1,6 +1,5 @@
 import { ClerkProvider } from '@clerk/nextjs'
-// ↓これを追加して、さっき成功した globals.css を読み込ませるよ！
-import "./globals.css"; 
+import Script from 'next/script' // これを追加
 
 export const metadata = {
   title: 'pulse',
@@ -14,7 +13,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="ja">
-        {/* body に antialiased を付けると文字が綺麗になるよ */}
+        <head>
+          {/* ↓ これが魔法の1行！CSSファイルが壊れてても Tailwind を強制適用するよ */}
+          <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+        </head>
         <body className="bg-black text-white antialiased">
           {children}
         </body>
