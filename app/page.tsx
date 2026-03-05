@@ -37,7 +37,7 @@ export default function Home() {
       {/* 🟢 左側：サイドバー（PCサイズで表示） */}
       <aside className="w-64 hidden md:flex flex-col sticky top-0 h-screen p-4 border-r border-gray-800">
         <div className="mb-8 px-4 text-3xl font-black tracking-tighter italic text-blue-500">
-          <a href="/"></a>PULSE</a>
+          <a href="/">PULSE</a>
         </div>
         
         <nav className="flex-1 flex flex-col gap-2">
