@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import PostForm from "@/components/PostForm";
+import PostForm from "../components/PostForm";
 import { currentUser } from "@clerk/nextjs/server";
 // ↓ここ！LandingPageをインポートしてね
-import LandingPage from "@/components/LandingPage"; 
+import LandingPage from "../components/LandingPage"; 
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
