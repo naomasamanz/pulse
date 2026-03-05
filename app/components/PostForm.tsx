@@ -77,10 +77,13 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
         placeholder="タイトル"
         className="w-full bg-transparent text-white font-bold text-xl outline-none mb-2"
       />
+
+　<div className="h-[1px] w-full bg-gray-900 my-3" />
+      
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="いまどうしてる？"
+        placeholder="本文"
         className="w-full bg-transparent text-white text-lg outline-none resize-none"
       />
 
