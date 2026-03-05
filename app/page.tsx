@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import PostForm from "@/components/PostForm";
+import PostForm from "./components/PostForm";
 import { currentUser } from "@clerk/nextjs/server";
 
 // Supabaseクライアントの準備
