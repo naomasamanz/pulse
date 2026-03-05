@@ -8,23 +8,22 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// 型をしっかり定義して、TypeScriptを安心させるよ
 interface PostFormProps {
   onPostSuccess: (newPost: any) => void;
 }
 
 export default function PostForm({ onPostSuccess }: PostFormProps) {
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const { userId } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content || !userId) return;
+    if (!title || !content || !userId) return;
 
-    // 投稿して、結果を受け取る
     const { data, error } = await supabase
       .from("posts")
-      .insert([{ content, user_id: userId }])
+      .insert([{ title, content, user_id: userId }])
       .select()
       .single();
 
@@ -32,26 +31,32 @@ export default function PostForm({ onPostSuccess }: PostFormProps) {
       console.error(error);
       alert("投稿に失敗しました");
     } else if (data) {
+      setTitle("");
       setContent("");
-      // ここで親（page.tsx）の関数を呼ぶ！
       onPostSuccess(data);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-b border-gray-800">
+    <form onSubmit={handleSubmit} className="p-4 border-b border-gray-800 flex flex-col gap-4 bg-black">
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="タイトル"
+        className="w-full bg-transparent text-white font-bold text-xl outline-none border-b border-gray-800 pb-2 focus:border-blue-500 transition"
+      />
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="今、何してる？"
-        className="w-full bg-transparent text-white p-2 outline-none resize-none text-xl"
-        rows={3}
+        placeholder="本文"
+        className="w-full bg-transparent text-white text-lg outline-none resize-none min-h-[100px]"
       />
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-end">
         <button 
           type="submit" 
-          disabled={!content}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-bold disabled:opacity-50 transition"
+          disabled={!title || !content}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded-full font-bold disabled:opacity-50 transition-all shadow-lg active:scale-95"
         >
           投稿する
         </button>
