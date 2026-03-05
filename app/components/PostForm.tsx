@@ -3,13 +3,13 @@ import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@clerk/nextjs";
 
-// Vercelに設定した鍵を読み込むよ
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function PostForm() {
+// プロップスとして onPostSuccess という関数を受け取るようにするよ
+export default function PostForm({ onPostSuccess }: { onPostSuccess: (newPost: any) => void }) {
   const [content, setContent] = useState("");
   const { userId } = useAuth();
 
@@ -17,18 +17,19 @@ export default function PostForm() {
     e.preventDefault();
     if (!content || !userId) return;
 
-    // Supabaseのpostsテーブルにデータを投げ込む！
-    const { error } = await supabase
+    // 投稿して、その結果（新しいデータ）を返してもらう
+    const { data, error } = await supabase
       .from("posts")
-      .insert([{ content, user_id: userId }]);
+      .insert([{ content, user_id: userId }])
+      .select() // これを付けると、今入れたデータが戻ってくる！
+      .single();
 
     if (error) {
-      console.error(error);
-      alert("エラーが起きたよ...");
+      alert("失敗しちゃった...");
     } else {
       setContent("");
-      alert("投稿完了！画面を更新してみてね。");
-      window.location.reload(); // 投稿を反映させるためにリロード
+      // リロードの代わりに、親にデータを渡す！
+      onPostSuccess(data);
     }
   };
 
@@ -44,10 +45,9 @@ export default function PostForm() {
       <div className="flex justify-end mt-2">
         <button 
           type="submit" 
-          disabled={!content}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-bold disabled:opacity-50 transition"
+          className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold"
         >
-          投稿する
+          Post
         </button>
       </div>
     </form>
