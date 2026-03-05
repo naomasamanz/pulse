@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
-import LandingPage from "./components/LandingPage";
+import LandingPage from "../components/LandingPage";
 
 const ADMIN_USER_ID = "user_3AT5oMVRngSjFmGA1C4FTPKwDU5"; 
 
