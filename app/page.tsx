@@ -62,20 +62,20 @@ export default function Home() {
     fetchPosts();
   };
 
-  // ❤️ いいねトグル処理
+  // ❤️ いいねトグル処理（スパム防止・データクリーン版）
   const handleLike = async (post: any) => {
     if (!user) return;
 
     const isLiked = myLikes.includes(post.id);
     
-    // 見た目を先に変える（サクサク感！）
+    // 見た目を先に変える（楽観的更新）
     if (isLiked) {
       setMyLikes(myLikes.filter(id => id !== post.id));
     } else {
       setMyLikes([...myLikes, post.id]);
     }
 
-    // DBを更新
+    // DBに「今のいいね状態」があるか確認
     const { data: existingLike } = await supabase
       .from("notifications")
       .select("id")
@@ -86,8 +86,10 @@ export default function Home() {
       .maybeSingle();
 
     if (existingLike) {
+      // すでにあれば削除（＝通知を取り消す）
       await supabase.from("notifications").delete().eq("id", existingLike.id);
     } else {
+      // なければ新規作成（＝通知を送る）
       await supabase.from("notifications").insert({
         user_id: post.user_id,
         actor_id: user.id,
