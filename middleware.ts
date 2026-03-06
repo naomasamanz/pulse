@@ -6,8 +6,9 @@ const isPublicRoute = createRouteMatcher(['/']);
 export default clerkMiddleware(async (auth, request) => {
   // 💡 公開ルート以外でログインしていない場合は、ログインを強制
   if (!isPublicRoute(request)) {
-    // 💡 ここ！ await をつけるのが最新のルールだよ
-    await auth().protect();
+    // 💡 (await auth()) と書くことで、Promiseを解決してから protect を呼び出す！
+    const authObject = await auth();
+    authObject.protect();
   }
 });
 
