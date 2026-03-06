@@ -30,6 +30,7 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
     e.preventDefault();
     if ((!title && !content) || !userId || isUploading) return;
     setIsUploading(true);
+    console.log("🚀 ボタンが押されたよ！"); // 👈 まずこれが出るかチェック！
 
     let imageUrl = null;
 
