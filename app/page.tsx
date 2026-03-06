@@ -133,7 +133,7 @@ export default function Home() {
               <ShieldCheck className="text-blue-500" size={20} />
               <span className="text-xl font-black tracking-tighter">FEED</span>
             </div>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton fallbackRedirectUrl="/" />
           </header>
 
           <PostForm onPostSuccess={fetchPosts} />
