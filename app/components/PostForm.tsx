@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@clerk/nextjs";
 import { ImagePlus, X } from "lucide-react";
 
+// 💡 クライアントは外出しのままでOK
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -15,7 +16,7 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth(); // 🌟 getToken を追加
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -27,25 +28,32 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 🌟 タイトルか本文があれば送信OKにする（画像は任意！）
     if ((!title && !content) || !userId || isUploading) return;
     setIsUploading(true);
 
     let imageUrl = null;
 
     try {
+      // 🔑 ClerkからSupabase用の合鍵（JWT）をもらう
+      const token = await getToken({ template: "supabase" });
+      
+      if (!token) {
+        throw new Error("認証トークンの取得に失敗しました。Clerkの設定を確認してね！");
+      }
+
       // 📸 画像がある時だけアップロード処理を実行
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${userId}-${Math.random()}.${fileExt}`;
         
-        const { data, error: uploadError } = await supabase.storage
+        // Storageへのアップロード時もトークンを渡す
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('post_images')
-          .upload(fileName, imageFile);
+          .upload(fileName, imageFile, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
 
-        if (uploadError) {
-          throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
           .from('post_images')
@@ -53,14 +61,20 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
         imageUrl = publicUrl;
       }
 
-      // 📝 データベースに保存（imageUrlは空でもOK！）
+      // 📝 データベースに保存
+      // 💡 .insert の前に auth.setSession を呼ぶのが Supabase + Clerk の鉄板！
+      await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: "",
+      });
+
       const { data, error: dbError } = await supabase
         .from("posts")
         .insert([{ 
           title, 
           content, 
           user_id: userId, 
-          image_url: imageUrl // 画像がないときは null が入る
+          image_url: imageUrl 
         }])
         .select()
         .single();
@@ -76,7 +90,7 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
       }
     } catch (error) {
       console.error(error);
-      alert("投稿に失敗しました。もう一度試してみて！");
+      alert("投稿に失敗しました。ClerkのJWTテンプレート設定が『supabase』になってるか確認してね！");
     } finally {
       setIsUploading(false);
     }
@@ -92,7 +106,6 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
         className="w-full bg-transparent text-white font-extrabold text-2xl outline-none mb-1 placeholder:text-gray-700"
       />
       
-      {/* 🌟 さっき話した 1px の境界線 */}
       <div className="h-[1px] w-full bg-gray-900 my-3" />
 
       <textarea
