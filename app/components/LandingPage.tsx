@@ -10,7 +10,7 @@ export default function LandingPage() {
     if (!isLoaded) return;
     signIn.authenticateWithRedirect({
       strategy: strategy,
-      redirectUrl: "/sso-callback",
+      redirectUrl: "/",
       redirectUrlComplete: "/",
     });
   };
