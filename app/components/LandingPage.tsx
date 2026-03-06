@@ -17,6 +17,7 @@ export default function LandingPage() {
         strategy: strategy,
         redirectUrl: "/", // 💡 ここを一時的なコールバックに向けるのが確実
         redirectUrlComplete: "/",
+        fallbackRedirectUrl: "/",
       });
     } catch (err) {
       console.error("認証エラー:", err);
