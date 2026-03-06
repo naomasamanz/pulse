@@ -18,14 +18,15 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    // 💡 user.id が確定するまで待つ
+    if (!user?.id) return;
 
-    // 💡 actor_id を使って profiles テーブルから名前(username)を引っ張ってくるよ
+    // 💡 SQLで設定した名前「actor:profiles」を使ってデータを結合するよ
     const { data, error } = await supabase
       .from("notifications")
       .select(`
         *,
-        actor:profiles!actor_id (
+        actor:profiles (
           username
         )
       `)
@@ -33,7 +34,14 @@ export default function NotificationsPage() {
       .order("created_at", { ascending: false });
     
     if (error) {
-      console.error("通知の取得に失敗したよ:", error);
+      console.error("通知の取得エラー:", error);
+      // 万が一結合でエラーが出た時のためのセーフティ（名前なしでも中身だけは出す）
+      const { data: fallbackData } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (fallbackData) setNotifications(fallbackData);
     } else if (data) {
       setNotifications(data);
     }
@@ -55,7 +63,6 @@ export default function NotificationsPage() {
         <Sidebar />
 
         <main className="flex-1 max-w-2xl border-r border-gray-800 bg-black min-h-screen">
-          {/* ヘッダー */}
           <div className="sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex items-center gap-6 z-10">
             <Link href="/" className="hover:bg-white/10 p-2 rounded-full transition">
               <ArrowLeft size={20} />
@@ -67,7 +74,6 @@ export default function NotificationsPage() {
             {notifications.length > 0 ? (
               notifications.map((n) => (
                 <div key={n.id} className="p-4 flex gap-4 items-start hover:bg-white/[0.02] transition-colors">
-                  {/* アイコンの出し分け */}
                   <div className="mt-1">
                     {n.type === 'like' ? (
                       <Heart className="text-pink-500 fill-pink-500" size={24} />
@@ -77,9 +83,9 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-white">
-                        @{n.actor?.username || "誰か"}
+                        @{n.actor?.username || n.actor_id?.slice(0, 8) || "誰か"}
                       </span>
                       <span className="text-gray-400">
                         {n.type === 'like' ? "さんがあなたのパルスにいいねしました" : "さんにフォローされました"}
@@ -90,10 +96,7 @@ export default function NotificationsPage() {
                       <Clock size={12} />
                       <time>
                         {new Date(n.created_at).toLocaleString('ja-JP', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </time>
                     </div>
@@ -103,21 +106,20 @@ export default function NotificationsPage() {
             ) : (
               <div className="flex flex-col items-center justify-center p-20 text-center">
                 {loading ? (
-                  <p className="text-gray-500 animate-pulse">読み込み中...</p>
+                  <p className="text-gray-500 animate-pulse">パルスを受信中...</p>
                 ) : (
-                  <>
-                    <p className="text-gray-500 italic text-lg">通知はまだありません</p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      誰かがあなたに反応するとここに表示されるよ！
+                  <div className="space-y-2">
+                    <p className="text-gray-500 italic text-lg">まだ静かですね...</p>
+                    <p className="text-sm text-gray-600">
+                      パルスを刻んで、世界からの反応を待とう！
                     </p>
-                  </>
+                  </div>
                 )}
               </div>
             )}
           </div>
         </main>
 
-        {/* 右側（トレンドなど） */}
         <div className="hidden xl:block w-80 p-4"></div>
       </div>
     </div>
