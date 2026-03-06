@@ -17,27 +17,34 @@ export default function Home() {
   const { user, isLoaded } = useUser();
   const [posts, setPosts] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      // 💡 profilesテーブルと結合して、投稿者の名前も一緒に取ってくるよ！
-      const { data } = await supabase
-        .from("posts")
-        .select(`
-          *,
-          profiles (
-            username
-          )
-        `)
-        .order("created_at", { ascending: false });
-      
-      if (data) setPosts(data);
-    };
-    fetchPosts();
-  }, []);
+  // 投稿を取得する関数を独立させて、再利用しやすくするよ
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(`
+        *,
+        profiles (
+          username
+        )
+      `)
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("エラーだよ:", error);
+    } else if (data) {
+      setPosts(data);
+    }
+  };
 
-  const handleNewPost = (newPost: any) => {
-    // 新しい投稿をした時も、自分の最新の名前が表示されるようにリロード気味に処理
-    window.location.reload(); 
+  useEffect(() => {
+    if (isLoaded && user) {
+      fetchPosts();
+    }
+  }, [isLoaded, user]);
+
+  // 投稿成功時の処理（リロードせずにスマートに更新！）
+  const handleNewPost = () => {
+    fetchPosts(); // 再度読み込みに行くだけでOK！
   };
 
   if (!isLoaded) return null;
@@ -47,10 +54,10 @@ export default function Home() {
     <div className="flex justify-center min-h-screen bg-black text-white">
       <div className="flex w-full max-w-[1300px] justify-start">
         
-        {/* 🟢 サイドバー：共通コンポーネント */}
+        {/* 🟢 サイドバー */}
         <Sidebar />
 
-        {/* ⚪️ メイン：中央の投稿エリア */}
+        {/* ⚪️ メインエリア */}
         <main className="flex-1 max-w-2xl border-r border-gray-800 bg-black min-h-screen">
           <div className="sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center z-10">
             <h1 className="text-xl font-bold tracking-tight">ホーム</h1>
@@ -71,6 +78,7 @@ export default function Home() {
                   <p className="text-gray-400 text-lg leading-relaxed break-words whitespace-pre-wrap mb-4">
                     {post.content}
                   </p>
+                  
                   {post.image_url && (
                     <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800">
                       <img 
@@ -84,10 +92,11 @@ export default function Home() {
                 
                 <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                   <div className="flex items-center gap-2">
+                    {/* アイコン（将来的にここも profiles の画像にできるね！） */}
                     <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
                     <span className="font-medium text-blue-400/80">
-                      {/* 💡 プロフィールに名前があればそれを表示、なければIDを表示 */}
-                      @{post.profiles?.username || post.user_id.slice(0, 8)}
+                      {/* 💡 投稿者の名前を表示（profilesに無ければIDを表示） */}
+                      @{Array.isArray(post.profiles) ? post.profiles[0]?.username : post.profiles?.username || post.user_id?.slice(0, 8)}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 opacity-60">
@@ -97,10 +106,16 @@ export default function Home() {
                 </div>
               </article>
             ))}
+
+            {posts.length === 0 && (
+              <div className="p-20 text-center text-gray-600 italic">
+                まだ投稿がありません。
+              </div>
+            )}
           </div>
         </main>
 
-        {/* 🔵 右側 */}
+        {/* 🔵 右側（トレンドなど） */}
         <div className="hidden xl:block w-80 p-4">
           <div className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
             <h3 className="text-lg font-bold mb-4">いまどうしてる？</h3>
