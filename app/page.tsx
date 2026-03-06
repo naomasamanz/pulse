@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Clock } from "lucide-react";
-import Sidebar from "./components/Sidebar"; // 👈 さっき作ったやつを呼ぶ
+import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
 
@@ -19,17 +19,25 @@ export default function Home() {
 
   useEffect(() => {
     const fetchPosts = async () => {
+      // 💡 profilesテーブルと結合して、投稿者の名前も一緒に取ってくるよ！
       const { data } = await supabase
         .from("posts")
-        .select("*")
+        .select(`
+          *,
+          profiles (
+            username
+          )
+        `)
         .order("created_at", { ascending: false });
+      
       if (data) setPosts(data);
     };
     fetchPosts();
   }, []);
 
   const handleNewPost = (newPost: any) => {
-    setPosts([newPost, ...posts]);
+    // 新しい投稿をした時も、自分の最新の名前が表示されるようにリロード気味に処理
+    window.location.reload(); 
   };
 
   if (!isLoaded) return null;
@@ -39,7 +47,7 @@ export default function Home() {
     <div className="flex justify-center min-h-screen bg-black text-white">
       <div className="flex w-full max-w-[1300px] justify-start">
         
-        {/* 🟢 サイドバー：切り出したコンポーネントを表示 */}
+        {/* 🟢 サイドバー：共通コンポーネント */}
         <Sidebar />
 
         {/* ⚪️ メイン：中央の投稿エリア */}
@@ -77,7 +85,10 @@ export default function Home() {
                 <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
-                    <span className="font-medium text-blue-400/80">@{post.user_id.slice(0, 8)}</span>
+                    <span className="font-medium text-blue-400/80">
+                      {/* 💡 プロフィールに名前があればそれを表示、なければIDを表示 */}
+                      @{post.profiles?.username || post.user_id.slice(0, 8)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 opacity-60">
                     <Clock size={12} />
