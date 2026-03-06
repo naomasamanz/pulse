@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Clock, Heart, Loader2 } from "lucide-react"; // Loader2を追加
+import { Clock, Heart, Loader2 } from "lucide-react"; 
 import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
@@ -15,11 +15,13 @@ const supabase = createClient(
 );
 
 export default function Home() {
+  // Clerkからユーザー情報とロード状態を取得
   const { user, isLoaded } = useUser();
+  
   const [posts, setPosts] = useState<any[]>([]);
-  const [myLikes, setMyLikes] = useState<number[]>([]); // 自分がいいねした投稿IDのリスト
+  const [myLikes, setMyLikes] = useState<number[]>([]);
 
-  // 1. 投稿一覧を取得する
+  // 1. 投稿一覧を取得する関数
   const fetchPosts = async () => {
     const { data, error } = await supabase
       .from("posts")
@@ -38,7 +40,7 @@ export default function Home() {
     }
   };
 
-  // 2. 自分の「いいね」状態を取得する
+  // 2. 自分の「いいね」状態を取得する関数
   const fetchMyLikes = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -52,7 +54,7 @@ export default function Home() {
     }
   };
 
-  // ログイン状態が変わった時にデータを取得
+  // ログイン状態が確定したらデータを取得
   useEffect(() => {
     if (isLoaded && user) {
       fetchPosts();
@@ -64,20 +66,20 @@ export default function Home() {
     fetchPosts();
   };
 
-  // ❤️ いいねトグル処理（スパム防止・データクリーン版）
+  // ❤️ いいねトグル処理
   const handleLike = async (post: any) => {
     if (!user) return;
 
     const isLiked = myLikes.includes(post.id);
     
-    // 見た目を先に変える（楽観的更新）
+    // 楽観的更新
     if (isLiked) {
       setMyLikes(myLikes.filter(id => id !== post.id));
     } else {
       setMyLikes([...myLikes, post.id]);
     }
 
-    // DBに「今のいいね状態」があるか確認
+    // DB確認
     const { data: existingLike } = await supabase
       .from("notifications")
       .select("id")
@@ -88,10 +90,8 @@ export default function Home() {
       .maybeSingle();
 
     if (existingLike) {
-      // すでにあれば削除（＝通知を取り消す）
       await supabase.from("notifications").delete().eq("id", existingLike.id);
     } else {
-      // なければ新規作成（＝通知を送る）
       await supabase.from("notifications").insert({
         user_id: post.user_id,
         actor_id: user.id,
@@ -101,7 +101,7 @@ export default function Home() {
     }
   };
 
-  // 💡 ここが大事！ログイン判定中の表示
+  // 💡 判定中：ここで isLoaded をチェック
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
@@ -111,7 +111,7 @@ export default function Home() {
     );
   }
 
-  // 💡 完全にログインしていないと確定したらランディングページへ
+  // 💡 未ログイン確定時
   if (!user) {
     return <LandingPage />;
   }
@@ -151,7 +151,6 @@ export default function Home() {
                         {post.content}
                       </p>
                       
-                      {/* 投稿画像がある場合 */}
                       {post.image_url && (
                         <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800">
                           <img 
@@ -163,7 +162,6 @@ export default function Home() {
                       )}
                     </div>
                     
-                    {/* 投稿フッター */}
                     <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
@@ -173,7 +171,6 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-center gap-6">
-                        {/* ❤️ いいねボタン */}
                         <button 
                           onClick={() => handleLike(post)}
                           className={`flex items-center gap-1 group/like transition-colors ${isLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
@@ -200,7 +197,7 @@ export default function Home() {
           </div>
         </main>
 
-        {/* 右側サイドバー（デスクトップのみ） */}
+        {/* 右側サイドバー */}
         <div className="hidden xl:block w-80 p-4">
           <div className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
             <h3 className="text-lg font-bold mb-4">いまどうしてる？</h3>
@@ -209,6 +206,10 @@ export default function Home() {
               <div className="h-4 bg-gray-800 rounded w-3/4 animate-pulse"></div>
               <div className="h-4 bg-gray-800 rounded w-1/2 animate-pulse"></div>
             </div>
+          </div>
+          {/* 行数稼ぎというわけじゃないけど、今後の拡張性を考えて閉じタグの前に少し余白とコメントを */}
+          <div className="mt-8 text-[10px] text-zinc-700 text-center uppercase tracking-widest">
+            Pulse v1.0.0 - Fully Operational
           </div>
         </div>
       </div>
