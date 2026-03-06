@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Clock, Heart } from "lucide-react"; // 👈 Heart を追加
+import { Clock, Heart } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
@@ -50,22 +50,46 @@ export default function Home() {
     fetchPosts();
   };
 
-  // 🔴 追加：いいねボタンを押した時の処理
+  // ❤️ いいね（トグル式）の処理
   const handleLike = async (post: any) => {
     if (!user) return;
 
-    const { error } = await supabase.from("notifications").insert({
-      user_id: post.user_id, // 投稿した人（通知が届く人）
-      actor_id: user.id,      // アクションした人（自分）
-      type: "like",
-      post_id: post.id,
-    });
+    // 1. すでに自分がこの投稿にいいね（通知）を送っているかチェック
+    const { data: existingLike } = await supabase
+      .from("notifications")
+      .select("id")
+      .eq("user_id", post.user_id)
+      .eq("actor_id", user.id)
+      .eq("post_id", post.id)
+      .eq("type", "like")
+      .maybeSingle(); // データがなくてもエラーにしない
 
-    if (error) {
-      console.error("いいね失敗:", error);
+    if (existingLike) {
+      // 2. すでにあれば削除（取り消し）
+      const { error: deleteError } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("id", existingLike.id);
+
+      if (!deleteError) {
+        console.log("いいねを取り消したよ");
+        // 必要ならここで「取り消しました」とトーストや状態変更を入れる
+      }
     } else {
-      alert("いいねしました！相手の通知画面に届くよ！");
+      // 3. なければ新規作成
+      const { error: insertError } = await supabase.from("notifications").insert({
+        user_id: post.user_id,
+        actor_id: user.id,
+        type: "like",
+        post_id: post.id,
+      });
+
+      if (!insertError) {
+        console.log("いいねしました！");
+      }
     }
+    
+    // 💡 本当はここで「いいね数」の状態を更新すると完璧だけど、まずはDBの整理から！
   };
 
   if (!isLoaded) return null;
@@ -118,8 +142,8 @@ export default function Home() {
                       </span>
                     </div>
 
-                    {/* 🔴 追加：いいねボタンと時間のエリア */}
                     <div className="flex items-center gap-6">
+                      {/* いいねボタン */}
                       <button 
                         onClick={() => handleLike(post)}
                         className="flex items-center gap-1 group/like text-gray-500 hover:text-pink-500 transition-colors"
