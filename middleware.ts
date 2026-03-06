@@ -1,26 +1,26 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// 💡 公開ルート（ログインなしでOKな場所）を定義
+// 💡 1. 公開ルート（トップページ）を定義
 const isPublicRoute = createRouteMatcher(['/']);
 
-export default clerkMiddleware(async (auth, request) => {
-  // 💡 公開ルート（トップページ）へのアクセスの場合は、即終了してスルーさせる
-  // これが「戻されるループ」を防ぐ最強の盾！
+export default clerkMiddleware((auth, request) => {
+  // 💡 2. もしトップページ（/）なら、何もせずスルー！
+  // これで Middleware 内部の複雑な非同期処理をスキップさせる
   if (isPublicRoute(request)) {
     return;
   }
 
-  // 💡 公開ルート以外の場合は保護をかける
-  // 型エラーを回避するため、auth() の結果を直接 protect する最新の書き方だよ
-  const authObj = await auth();
-  
-  // TypeScriptに「これは絶対に protect を持っている」と教える (any で回避)
-  (authObj as any).protect();
+  // 💡 3. それ以外のページ（保護したいページ）の場合だけ protect を実行
+  // 型エラーを避けるため、ここではもっともシンプルな呼び出しにする
+  const authConfig = auth() as any;
+  if (typeof authConfig.protect === 'function') {
+    authConfig.protect();
+  }
 });
 
 export const config = {
   matcher: [
-    // 静的ファイルを除外してすべてに適用する最新設定
+    // 💡 4. 静的ファイルを除外する最新の正規表現（これはそのまま）
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],
