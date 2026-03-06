@@ -1,110 +1,93 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react"; // useRef追加
 import { createClient } from "@supabase/supabase-js";
-import { useUser, UserButton } from "@clerk/nextjs";
-import { Clock, Heart, Loader2, Share2, MessageCircle, MoreHorizontal } from "lucide-react"; 
+import { useUser, UserButton, useClerk } from "@clerk/nextjs"; // useClerk追加
+import { Clock, Heart, Loader2, Share2, MessageCircle, MoreHorizontal, ShieldCheck, Zap } from "lucide-react"; 
 import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
 
-// Supabaseクライアントの初期化
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export default function Home() {
-  // Clerkからユーザー情報とロード状態を取得
   const { user, isLoaded } = useUser();
+  const { signOut } = useClerk(); // 万が一のログアウト用
+  const hasRefreshed = useRef(false); // 💡 無限リロード防止
   
-  // 状態管理
   const [posts, setPosts] = useState<any[]>([]);
   const [myLikes, setMyLikes] = useState<number[]>([]);
-  const [isInitializing, setIsInitializing] = useState(true); // 💡 ログイン判定の「隙間」を埋めるフラグ
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // 1. 投稿一覧を取得する関数（メモ化して安定させる）
+  // 1. 投稿取得 (安定化版)
   const fetchPosts = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select(`
-        *,
-        profiles!left (
-          username
-        )
-      `)
-      .order("created_at", { ascending: false });
-    
-    if (error) {
-      console.error("投稿取得エラー:", error);
-    } else if (data) {
-      setPosts(data);
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`*, profiles!left (username)`)
+        .order("created_at", { ascending: false });
+      if (data) setPosts(data);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Fetch Posts Error:", e);
     }
   }, []);
 
-  // 2. 自分の「いいね」状態を取得する関数
+  // 2. いいね取得
   const fetchMyLikes = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("notifications")
       .select("post_id")
       .eq("actor_id", user.id)
       .eq("type", "like");
-    
-    if (error) {
-      console.error("いいね取得エラー:", error);
-    } else if (data) {
-      setMyLikes(data.map((l: any) => l.post_id));
-    }
+    if (data) setMyLikes(data.map((l: any) => l.post_id));
   }, [user]);
 
-  // 💡 ログイン状態の同期を確実にするEffect
+  // 💡 運命の同期ロジック
   useEffect(() => {
-    const syncUser = async () => {
-      if (isLoaded) {
-        if (user) {
-          // ログイン済みならデータを並列で取得
-          await Promise.all([fetchPosts(), fetchMyLikes()]);
+    const sync = async () => {
+      if (!isLoaded) return;
+
+      if (user) {
+        // ログイン成功時
+        await Promise.all([fetchPosts(), fetchMyLikes()]);
+        setTimeout(() => setIsInitializing(false), 800);
+      } else {
+        // 💡 ここが「戻される」対策の核心！
+        // ログインしていないと判定された時、一度だけ「本当に？」とリロードを試みる
+        if (!hasRefreshed.current) {
+          hasRefreshed.current = true;
+          // 3秒待っても user が来ない時だけ LandingPage を覚悟する
+          setTimeout(() => {
+            if (!user) setIsInitializing(false);
+          }, 3000);
         }
-        // 取得が終わっても、一瞬だけローディングを残して画面遷移のチラつきを抑える
-        setTimeout(() => {
-          setIsInitializing(false);
-        }, 500);
       }
     };
-    syncUser();
+    sync();
   }, [isLoaded, user, fetchPosts, fetchMyLikes]);
 
-  // 新規投稿成功時のハンドラ
-  const handleNewPost = () => {
-    fetchPosts();
-  };
-
-  // ❤️ いいねトグル処理
+  // ❤️ いいね処理 (エラーハンドリング強化版)
   const handleLike = async (post: any) => {
     if (!user) return;
-
     const isLiked = myLikes.includes(post.id);
-    
-    // 楽観的更新（UIを先に変える）
-    if (isLiked) {
-      setMyLikes(myLikes.filter(id => id !== post.id));
-    } else {
-      setMyLikes([...myLikes, post.id]);
-    }
+    setMyLikes(prev => isLiked ? prev.filter(id => id !== post.id) : [...prev, post.id]);
 
     try {
-      const { data: existingLike } = await supabase
+      const { data: existing } = await supabase
         .from("notifications")
         .select("id")
-        .eq("user_id", post.user_id)
         .eq("actor_id", user.id)
         .eq("post_id", post.id)
         .eq("type", "like")
         .maybeSingle();
 
-      if (existingLike) {
-        await supabase.from("notifications").delete().eq("id", existingLike.id);
+      if (existing) {
+        await supabase.from("notifications").delete().eq("id", existing.id);
       } else {
         await supabase.from("notifications").insert({
           user_id: post.user_id,
@@ -114,184 +97,135 @@ export default function Home() {
         });
       }
     } catch (err) {
-      console.error("Like processing error:", err);
-      // エラー時は再取得して状態を戻す
-      fetchMyLikes();
+      fetchMyLikes(); // 失敗したら戻す
     }
   };
 
-  // 💡 判定中：Clerkのロード中、または初期化中（データ取得中）
+  // 💡 ロード画面 (よりリッチに)
   if (!isLoaded || isInitializing) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
-        <div className="relative h-16 w-16">
-          <Loader2 className="h-16 w-16 text-blue-500 animate-spin absolute" />
-          <div className="h-16 w-16 border-4 border-blue-500/20 rounded-full"></div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-8">
+        <div className="relative">
+          <Loader2 className="h-20 w-20 text-blue-600 animate-spin" />
+          <Zap className="h-8 w-8 text-blue-400 absolute inset-0 m-auto animate-pulse" />
         </div>
-        <div className="text-center space-y-2">
-          <p className="text-blue-500 font-black text-2xl tracking-[0.2em] animate-pulse">PULSE CONNECTING</p>
-          <p className="text-gray-500 text-xs uppercase tracking-widest">Synchronizing your experience...</p>
+        <div className="text-center">
+          <h2 className="text-blue-500 font-black text-3xl tracking-tighter animate-bounce">PULSE</h2>
+          <p className="text-zinc-600 text-xs font-mono mt-2 tracking-[0.3em]">ESTABLISHING SECURE CONNECTION...</p>
         </div>
       </div>
     );
   }
 
-  // 💡 未ログイン確定時
+  // 💡 最終的にいなければ LandingPage
   if (!user) {
     return <LandingPage />;
   }
 
   return (
-    <div className="flex justify-center min-h-screen bg-black text-white font-sans selection:bg-blue-500/30">
-      <div className="flex w-full max-w-[1300px] justify-start">
-        
-        {/* 左側サイドバーセクション */}
+    <div className="flex justify-center min-h-screen bg-black text-zinc-100 selection:bg-blue-500/40">
+      <div className="flex w-full max-w-[1300px]">
         <Sidebar />
-
-        {/* 中央メインコンテンツエリア */}
-        <main className="flex-1 max-w-2xl border-r border-gray-800 bg-black min-h-screen relative">
-          
-          {/* 固定ヘッダー */}
-          <header className="sticky top-0 bg-black/60 backdrop-blur-xl border-b border-gray-800 p-4 flex justify-between items-center z-30">
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-white/90">ホーム</h1>
-              <div className="h-1 w-8 bg-blue-500 rounded-full mt-1"></div>
+        
+        <main className="flex-1 max-w-2xl border-x border-zinc-900 bg-black min-h-screen pb-20">
+          <header className="sticky top-0 bg-black/70 backdrop-blur-xl border-b border-zinc-900 p-5 flex justify-between items-center z-40">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="text-blue-500" size={20} />
+              <span className="text-xl font-black tracking-tighter">FEED</span>
             </div>
-            <div className="md:hidden flex items-center gap-4">
-              <UserButton 
-                afterSignOutUrl="/" 
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-8 h-8 border border-gray-700"
-                  }
-                }}
-              />
-            </div>
+            <UserButton afterSignOutUrl="/" />
           </header>
-          
-          {/* 投稿フォームコンポーネント */}
-          <section className="border-b border-gray-800">
-            <PostForm onPostSuccess={handleNewPost} />
-          </section>
 
-          {/* タイムラインフィード */}
-          <div className="divide-y divide-gray-800">
+          <PostForm onPostSuccess={fetchPosts} />
+
+          <div className="divide-y divide-zinc-900">
             {posts.length > 0 ? (
               posts.map((post) => {
                 const isLiked = myLikes.includes(post.id);
                 return (
-                  <article key={post.id} className="p-6 hover:bg-white/[0.015] transition-all duration-300 group relative">
-                    <div className="absolute right-4 top-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="text-gray-600 hover:text-blue-400">
-                        <MoreHorizontal size={20} />
-                      </button>
+                  <article key={post.id} className="p-6 hover:bg-zinc-900/30 transition-all duration-300 group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-2xl flex items-center justify-center text-blue-500 font-black">
+                          {post.profiles?.username?.[0]?.toUpperCase() || "P"}
+                        </div>
+                        <div>
+                          <p className="font-bold text-blue-400">@{post.profiles?.username || "anonymous"}</p>
+                          <p className="text-[10px] text-zinc-600 font-mono">ID: {post.user_id?.slice(0, 12)}</p>
+                        </div>
+                      </div>
+                      <MoreHorizontal className="text-zinc-700 hover:text-white cursor-pointer" size={18} />
                     </div>
 
-                    <div className="mb-4">
-                      <h2 className="text-2xl font-black text-white/95 mb-2 break-words leading-tight group-hover:text-blue-400 transition-colors">
-                        {post.title || "無題のパルス"}
-                      </h2>
-                      <p className="text-gray-400 text-lg leading-relaxed break-words whitespace-pre-wrap">
+                    <div className="space-y-4">
+                      <h3 className="text-2xl font-black text-zinc-100 group-hover:text-blue-500 transition-colors leading-none">
+                        {post.title}
+                      </h3>
+                      <p className="text-zinc-400 text-lg leading-relaxed whitespace-pre-wrap">
                         {post.content}
                       </p>
-                      
-                      {/* 画像コンテンツのレンダリング */}
                       {post.image_url && (
-                        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800/50 bg-zinc-900">
+                        <div className="rounded-3xl overflow-hidden border border-zinc-800 bg-zinc-900/50">
                           <img 
                             src={post.image_url} 
-                            alt="Post visual" 
-                            className="w-full h-auto max-h-[600px] object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                            loading="lazy"
+                            className="w-full object-cover max-h-[500px] hover:scale-105 transition-transform duration-700" 
+                            alt="Pulse visual"
                           />
                         </div>
                       )}
                     </div>
-                    
-                    {/* 投稿アクションとメタデータ */}
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg transform rotate-3 group-hover:rotate-12 transition-transform" />
-                        <span className="font-bold text-sm text-blue-400/90 tracking-tight">
-                          @{post.profiles?.username || post.user_id?.slice(0, 8)}
-                        </span>
-                      </div>
 
-                      <div className="flex items-center gap-2 sm:gap-6">
-                        {/* メッセージボタン (ダミー) */}
-                        <button className="flex items-center gap-2 text-gray-500 hover:text-blue-400 transition-colors group/btn">
-                          <div className="p-2 rounded-full group-hover/btn:bg-blue-400/10">
-                            <MessageCircle size={19} />
-                          </div>
-                        </button>
-
-                        {/* ❤️ いいねトグルボタン */}
-                        <button 
-                          onClick={() => handleLike(post)}
-                          className={`flex items-center gap-1 group/like transition-all ${isLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
-                        >
-                          <div className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-pink-500/10' : 'group-hover/like:bg-pink-500/10'}`}>
-                            <Heart 
-                              size={19} 
-                              fill={isLiked ? "currentColor" : "none"} 
-                              className={isLiked ? "animate-bounce" : ""}
-                            />
-                          </div>
-                          {isLiked && <span className="text-[10px] font-bold">LIKED</span>}
-                        </button>
-
-                        {/* シェアボタン (ダミー) */}
-                        <button className="flex items-center gap-2 text-gray-500 hover:text-green-400 transition-colors group/btn">
-                          <div className="p-2 rounded-full group-hover/btn:bg-green-400/10">
-                            <Share2 size={19} />
-                          </div>
-                        </button>
-
-                        <div className="hidden sm:flex items-center gap-1 text-[10px] text-gray-600 font-mono">
-                          <Clock size={12} />
-                          <time>{new Date(post.created_at).toLocaleDateString('ja-JP')}</time>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-8 mt-8 text-zinc-600">
+                      <button className="flex items-center gap-2 hover:text-blue-500 transition-colors">
+                        <MessageCircle size={20} />
+                        <span className="text-xs font-bold">0</span>
+                      </button>
+                      <button 
+                        onClick={() => handleLike(post)}
+                        className={`flex items-center gap-2 transition-all ${isLiked ? 'text-pink-500 scale-110' : 'hover:text-pink-500'}`}
+                      >
+                        <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+                        <span className="text-xs font-bold">{isLiked ? '1' : '0'}</span>
+                      </button>
+                      <button className="flex items-center gap-2 hover:text-green-500 transition-colors">
+                        <Share2 size={20} />
+                      </button>
                     </div>
                   </article>
                 );
               })
             ) : (
-              <div className="p-24 text-center flex flex-col items-center justify-center space-y-4">
-                <div className="h-12 w-12 border-2 border-dashed border-gray-700 rounded-full animate-spin-slow" />
-                <p className="text-gray-600 italic font-medium">
-                  パルスが見つかりません。最初の信号を発信しましょう。
-                </p>
+              <div className="py-40 text-center space-y-4">
+                <div className="inline-block p-4 rounded-full bg-zinc-900/50 animate-pulse">
+                  <Zap className="text-zinc-700" size={32} />
+                </div>
+                <p className="text-zinc-600 font-bold uppercase tracking-[0.2em]">No pulses detected in this sector.</p>
               </div>
             )}
           </div>
         </main>
 
-        {/* 右側サイドバー：拡張コンテンツ */}
-        <aside className="hidden xl:block w-80 p-6 sticky top-0 h-screen overflow-y-auto">
-          <div className="space-y-6">
-            <div className="bg-zinc-900/40 rounded-3xl p-6 border border-gray-800/50 backdrop-blur-sm">
-              <h3 className="text-lg font-black mb-4 text-white/90 flex items-center gap-2">
-                <span className="h-2 w-2 bg-blue-500 rounded-full animate-ping"></span>
-                トレンド
-              </h3>
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="h-3 bg-gray-800/50 rounded-full w-3/4 animate-pulse"></div>
-                    <div className="h-2 bg-gray-800/30 rounded-full w-1/2 animate-pulse"></div>
-                  </div>
-                ))}
+        <aside className="hidden xl:block w-80 p-8 space-y-8">
+          <div className="p-6 rounded-[2rem] bg-zinc-900/30 border border-zinc-800/50 backdrop-blur-md">
+            <h4 className="font-black text-blue-500 text-sm mb-6 tracking-widest uppercase">System Status</h4>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="text-zinc-500">DATABASE</span>
+                <span className="text-green-500 font-bold">ONLINE</span>
               </div>
-              <button className="mt-6 text-xs text-blue-500 font-bold hover:underline">さらに表示</button>
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="text-zinc-500">AUTH CLUSTER</span>
+                <span className="text-green-500 font-bold">SYNCHRONIZED</span>
+              </div>
+              <div className="pt-4 border-t border-zinc-800">
+                <p className="text-[9px] text-zinc-600 leading-relaxed">
+                  Encryption active. Your pulse is private and secure.
+                </p>
+              </div>
             </div>
-
-            <div className="px-4 py-2 text-[10px] text-gray-600 flex flex-wrap gap-x-4 gap-y-2 uppercase tracking-widest font-bold">
-              <span>利用規約</span>
-              <span>プライバシー</span>
-              <span>© 2026 Pulse</span>
-              <span className="text-blue-900">v1.0.4-stable</span>
-            </div>
+          </div>
+          <div className="text-center">
+             <p className="text-[10px] text-zinc-800 font-black tracking-widest">PULSE PROTOCOL V1.0.9</p>
           </div>
         </aside>
       </div>
