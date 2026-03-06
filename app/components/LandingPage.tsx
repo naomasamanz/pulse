@@ -15,7 +15,7 @@ export default function LandingPage() {
     try {
       await signIn.authenticateWithRedirect({
         strategy: strategy,
-        redirectUrl: "/sso-callback", // 💡 ここを一時的なコールバックに向けるのが確実
+        redirectUrl: "/", // 💡 ここを一時的なコールバックに向けるのが確実
         redirectUrlComplete: "/",
       });
     } catch (err) {
