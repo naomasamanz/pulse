@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Clock } from "lucide-react";
+import { Clock, Heart } from "lucide-react"; // 👈 Heart を追加
 import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
@@ -17,7 +17,6 @@ export default function Home() {
   const { user, isLoaded } = useUser();
   const [posts, setPosts] = useState<any[]>([]);
 
-  // 💡 エラーを防ぐために、結合(Join)を「Left Join」として明示的に扱う書き方に変えたよ
   const fetchPosts = async () => {
     const { data, error } = await supabase
       .from("posts")
@@ -26,12 +25,11 @@ export default function Home() {
         profiles!left (
           username
         )
-      `) // !left を付けることで、プロフィールが無くても投稿は出す設定になるよ
+      `)
       .order("created_at", { ascending: false });
     
     if (error) {
       console.error("エラー詳細:", error);
-      // もし結合でコケたら、結合なしでリトライする安全装置
       const { data: simpleData } = await supabase
         .from("posts")
         .select("*")
@@ -49,7 +47,25 @@ export default function Home() {
   }, [isLoaded, user]);
 
   const handleNewPost = () => {
-    fetchPosts(); // リロードなしで最新の投稿を反映！
+    fetchPosts();
+  };
+
+  // 🔴 追加：いいねボタンを押した時の処理
+  const handleLike = async (post: any) => {
+    if (!user) return;
+
+    const { error } = await supabase.from("notifications").insert({
+      user_id: post.user_id, // 投稿した人（通知が届く人）
+      actor_id: user.id,      // アクションした人（自分）
+      type: "like",
+      post_id: post.id,
+    });
+
+    if (error) {
+      console.error("いいね失敗:", error);
+    } else {
+      alert("いいねしました！相手の通知画面に届くよ！");
+    }
   };
 
   if (!isLoaded) return null;
@@ -98,13 +114,25 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
                       <span className="font-medium text-blue-400/80">
-                        {/* 💡 どんなデータ形式で来ても名前を出すためのガードレール */}
                         @{post.profiles?.username || post.user_id?.slice(0, 8)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 opacity-60">
-                      <Clock size={12} />
-                      <time>{new Date(post.created_at).toLocaleDateString('ja-JP')}</time>
+
+                    {/* 🔴 追加：いいねボタンと時間のエリア */}
+                    <div className="flex items-center gap-6">
+                      <button 
+                        onClick={() => handleLike(post)}
+                        className="flex items-center gap-1 group/like text-gray-500 hover:text-pink-500 transition-colors"
+                      >
+                        <div className="p-2 group-hover/like:bg-pink-500/10 rounded-full transition-colors">
+                          <Heart size={18} />
+                        </div>
+                      </button>
+
+                      <div className="flex items-center gap-1 opacity-60">
+                        <Clock size={12} />
+                        <time>{new Date(post.created_at).toLocaleDateString('ja-JP')}</time>
+                      </div>
                     </div>
                   </div>
                 </article>
