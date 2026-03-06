@@ -16,18 +16,28 @@ const supabase = createClient(
 export default function Home() {
   const { user, isLoaded } = useUser();
   const [posts, setPosts] = useState<any[]>([]);
-  const [myLikes, setMyLikes] = useState<number[]>([]); // 👈 自分がいいねした投稿IDを保存
+  const [myLikes, setMyLikes] = useState<number[]>([]); // 自分がいいねした投稿IDのリスト
 
+  // 1. 投稿一覧を取得する
   const fetchPosts = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("posts")
-      .select(`*, profiles!left ( username )`)
+      .select(`
+        *,
+        profiles!left (
+          username
+        )
+      `)
       .order("created_at", { ascending: false });
     
-    if (data) setPosts(data);
+    if (error) {
+      console.error("投稿取得エラー:", error);
+    } else if (data) {
+      setPosts(data);
+    }
   };
 
-  // 💡 自分がいいねした投稿を全部取ってくる関数
+  // 2. 自分の「いいね」状態を取得する
   const fetchMyLikes = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -37,7 +47,6 @@ export default function Home() {
       .eq("type", "like");
     
     if (data) {
-      // IDだけの配列 [1, 2, 5...] に変換して保存
       setMyLikes(data.map((l: any) => l.post_id));
     }
   };
@@ -45,22 +54,28 @@ export default function Home() {
   useEffect(() => {
     if (isLoaded && user) {
       fetchPosts();
-      fetchMyLikes(); // 👈 起動時にいいね状態も取る
+      fetchMyLikes();
     }
   }, [isLoaded, user]);
 
+  const handleNewPost = () => {
+    fetchPosts();
+  };
+
+  // ❤️ いいねトグル処理
   const handleLike = async (post: any) => {
     if (!user) return;
 
-    // 💡 画面上の見た目を「先に」変えちゃう（爆速リアクション！）
     const isLiked = myLikes.includes(post.id);
+    
+    // 見た目を先に変える（サクサク感！）
     if (isLiked) {
-      setMyLikes(myLikes.filter(id => id !== post.id)); // 赤を消す
+      setMyLikes(myLikes.filter(id => id !== post.id));
     } else {
-      setMyLikes([...myLikes, post.id]); // 赤くする
+      setMyLikes([...myLikes, post.id]);
     }
 
-    // 裏側でDBを更新
+    // DBを更新
     const { data: existingLike } = await supabase
       .from("notifications")
       .select("id")
@@ -88,56 +103,86 @@ export default function Home() {
   return (
     <div className="flex justify-center min-h-screen bg-black text-white">
       <div className="flex w-full max-w-[1300px] justify-start">
+        
         <Sidebar />
+
         <main className="flex-1 max-w-2xl border-r border-gray-800 bg-black min-h-screen">
           <div className="sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center z-10">
             <h1 className="text-xl font-bold tracking-tight">ホーム</h1>
-            <div className="md:hidden"><UserButton afterSignOutUrl="/" /></div>
+            <div className="md:hidden">
+              <UserButton afterSignOutUrl="/" />
+            </div>
           </div>
-          <PostForm onPostSuccess={fetchPosts} />
+          
+          <PostForm onPostSuccess={handleNewPost} />
 
           <div className="divide-y divide-gray-800">
-            {posts.map((post) => {
-              const isLiked = myLikes.includes(post.id); // 👈 この投稿にいいねしてるか判定！
-
-              return (
-                <article key={post.id} className="p-6 hover:bg-white/[0.02] transition-colors group">
-                  <div className="mb-3">
-                    <h2 className="text-2xl font-extrabold mb-2 break-words">{post.title || "無題"}</h2>
-                    <p className="text-gray-400 text-lg mb-4 break-words whitespace-pre-wrap">{post.content}</p>
-                    {post.image_url && (
-                      <img src={post.image_url} className="rounded-2xl border border-gray-800 w-full" />
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
-                      <span className="text-xs text-blue-400 font-medium">@{post.profiles?.username || post.user_id?.slice(0, 8)}</span>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                      <button 
-                        onClick={() => handleLike(post)}
-                        className={`flex items-center gap-1 group/like transition-colors ${isLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
-                      >
-                        <div className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-pink-500/10' : 'group-hover/like:bg-pink-500/10'}`}>
-                          {/* 💡 isLiked なら fill（塗りつぶし）にする！ */}
-                          <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+            {posts.length > 0 ? (
+              posts.map((post) => {
+                const isLiked = myLikes.includes(post.id);
+                return (
+                  <article key={post.id} className="p-6 hover:bg-white/[0.02] transition-colors group">
+                    <div className="mb-3">
+                      <h2 className="text-2xl font-extrabold text-white mb-2 break-words">
+                        {post.title || "無題の投稿"}
+                      </h2>
+                      <p className="text-gray-400 text-lg leading-relaxed break-words whitespace-pre-wrap mb-4">
+                        {post.content}
+                      </p>
+                      
+                      {post.image_url && (
+                        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800">
+                          <img 
+                            src={post.image_url} 
+                            alt="Post content" 
+                            className="w-full h-auto max-h-[512px] object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                          />
                         </div>
-                      </button>
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <Clock size={12} />
-                        <time>{new Date(post.created_at).toLocaleDateString('ja-JP')}</time>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
+                        <span className="font-medium text-blue-400/80">
+                          @{post.profiles?.username || post.user_id?.slice(0, 8)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        {/* ❤️ いいねボタン */}
+                        <button 
+                          onClick={() => handleLike(post)}
+                          className={`flex items-center gap-1 group/like transition-colors ${isLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
+                        >
+                          <div className={`p-2 rounded-full transition-colors ${isLiked ? 'bg-pink-500/10' : 'group-hover/like:bg-pink-500/10'}`}>
+                            <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+                          </div>
+                        </button>
+
+                        <div className="flex items-center gap-1 opacity-60">
+                          <Clock size={12} />
+                          <time>{new Date(post.created_at).toLocaleDateString('ja-JP')}</time>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
+                  </article>
+                );
+              })
+            ) : (
+              <div className="p-20 text-center text-gray-600 italic">
+                パルスを読み込み中、または投稿がありません。
+              </div>
+            )}
           </div>
         </main>
-        <div className="hidden xl:block w-80 p-4"></div>
+
+        <div className="hidden xl:block w-80 p-4">
+          <div className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
+            <h3 className="text-lg font-bold mb-4">いまどうしてる？</h3>
+            <p className="text-sm text-gray-500 italic">Coming Soon...</p>
+          </div>
+        </div>
       </div>
     </div>
   );
