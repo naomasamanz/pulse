@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Clock, Heart } from "lucide-react";
+import { Clock, Heart, Loader2 } from "lucide-react"; // Loader2を追加
 import Sidebar from "./components/Sidebar";
 import PostForm from "./components/PostForm";
 import LandingPage from "./components/LandingPage";
 
+// Supabaseクライアントの初期化
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -51,6 +52,7 @@ export default function Home() {
     }
   };
 
+  // ログイン状態が変わった時にデータを取得
   useEffect(() => {
     if (isLoaded && user) {
       fetchPosts();
@@ -99,16 +101,31 @@ export default function Home() {
     }
   };
 
-  if (!isLoaded) return null;
-  if (!user) return <LandingPage />;
+  // 💡 ここが大事！ログイン判定中の表示
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        <p className="text-blue-500 font-bold tracking-widest animate-pulse">PULSE CONNECTING...</p>
+      </div>
+    );
+  }
+
+  // 💡 完全にログインしていないと確定したらランディングページへ
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="flex justify-center min-h-screen bg-black text-white">
       <div className="flex w-full max-w-[1300px] justify-start">
         
+        {/* 左側サイドバー */}
         <Sidebar />
 
+        {/* 中央メインコンテンツ */}
         <main className="flex-1 max-w-2xl border-r border-gray-800 bg-black min-h-screen">
+          {/* ヘッダー */}
           <div className="sticky top-0 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center z-10">
             <h1 className="text-xl font-bold tracking-tight">ホーム</h1>
             <div className="md:hidden">
@@ -116,8 +133,10 @@ export default function Home() {
             </div>
           </div>
           
+          {/* 投稿フォーム */}
           <PostForm onPostSuccess={handleNewPost} />
 
+          {/* タイムライン */}
           <div className="divide-y divide-gray-800">
             {posts.length > 0 ? (
               posts.map((post) => {
@@ -132,6 +151,7 @@ export default function Home() {
                         {post.content}
                       </p>
                       
+                      {/* 投稿画像がある場合 */}
                       {post.image_url && (
                         <div className="mt-4 overflow-hidden rounded-2xl border border-gray-800">
                           <img 
@@ -143,6 +163,7 @@ export default function Home() {
                       )}
                     </div>
                     
+                    {/* 投稿フッター */}
                     <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" />
@@ -179,10 +200,15 @@ export default function Home() {
           </div>
         </main>
 
+        {/* 右側サイドバー（デスクトップのみ） */}
         <div className="hidden xl:block w-80 p-4">
           <div className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800">
             <h3 className="text-lg font-bold mb-4">いまどうしてる？</h3>
             <p className="text-sm text-gray-500 italic">Coming Soon...</p>
+            <div className="mt-4 space-y-4">
+              <div className="h-4 bg-gray-800 rounded w-3/4 animate-pulse"></div>
+              <div className="h-4 bg-gray-800 rounded w-1/2 animate-pulse"></div>
+            </div>
           </div>
         </div>
       </div>
