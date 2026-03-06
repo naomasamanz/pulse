@@ -1,25 +1,23 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// 💡 公開ルート（トップページ）を定義
+// 💡 公開ルート（トップページ）の定義
 const isPublicRoute = createRouteMatcher(['/']);
 
 export default clerkMiddleware(async (auth, request) => {
-  // 💡 公開ルート（/）以外のページにアクセスしようとした場合
-  if (!isPublicRoute(request)) {
-    // 💡 protect() を直接メソッドとして呼ぶのではなく、
-    // auth() 自体が持っている保護機能（await (await auth()).protect()）を使うか、
-    // もしくは以下のように「型を一時的に無視」してビルドを通すのが正攻法だよ。
-    const authObject = await auth();
-    
-    // 型エラーを回避するために (authObject as any) を使う
-    // これで「protectなんてないよ！」という TypeScript のお叱りをスルーできる
-    (authObject as any).protect();
+  // 💡 もし公開ルート（/）へのアクセスなら、何もしない（スルーする）
+  if (isPublicRoute(request)) {
+    return;
   }
+
+  // 💡 公開ルート以外の場合は保護をかける
+  // プロパティを直接叩かずに protect() を実行する
+  const authObj = await auth();
+  authObj.protect();
 });
 
 export const config = {
   matcher: [
-    // Clerk公式推奨の最新のmatcher設定
+    // Clerk公式が推奨する、静的ファイルを除外する最新の正規表現
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],
