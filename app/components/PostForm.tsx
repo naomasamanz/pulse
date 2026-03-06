@@ -36,6 +36,10 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
     try {
       // 🔑 ClerkからSupabase用の合鍵（JWT）をもらう
       const token = await getToken({ template: "supabase" });
+
+      // 👇 これを追加！
+console.log("🎟️ 現在のトークン:", token);
+if (token) console.log("🔍 トークンの最初の10文字:", token.substring(0, 10));
       
       if (!token) {
         throw new Error("認証トークンの取得に失敗しました。Clerkの設定を確認してね！");
