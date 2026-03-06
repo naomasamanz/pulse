@@ -1,14 +1,18 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
 // 💡 公開ルート（ログインなしでOKな場所）を定義
+// トップページだけは誰でも見れるようにしておく
 const isPublicRoute = createRouteMatcher(['/']);
 
 export default clerkMiddleware(async (auth, request) => {
-  // 💡 公開ルート以外でログインしていない場合は、ログインを強制
+  // 💡 公開ルート以外（＝保護したいページ）にアクセスした場合
   if (!isPublicRoute(request)) {
-    // 💡 (await auth()) と書くことで、Promiseを解決してから protect を呼び出す！
+    // 💡 auth() を await して取得
     const authObject = await auth();
-    authObject.protect();
+    
+    // 💡 protect メソッドを呼び出す
+    // もし型エラーがしつこい場合は、このように直接呼び出せるはず
+    await authObject.protect();
   }
 });
 
