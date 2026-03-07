@@ -4,10 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@clerk/nextjs";
 import { ImagePlus, X } from "lucide-react";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// 通常のクライアント（読み取り用などに使用）
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any) => void }) {
   const [title, setTitle] = useState("");
@@ -31,50 +30,46 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
     setIsUploading(true);
 
     try {
-      // 1. Clerkからトークンを取得（テンプレート名が合っているか超重要！）
+      // 1. Clerkからトークンを取得
       const token = await getToken({ template: "supabase" });
       
       if (!token) {
-        console.error("❌ トークンが取得できませんでした");
-        throw new Error("認証トークンが空です。Clerkの設定を確認してください。");
+        throw new Error("認証トークンの取得に失敗しました。");
       }
 
-      console.log("🎟️ トークン取得成功");
-
-      // 2. Supabaseにセッションをセット（合言葉の照合）
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: "",
+      // 💡 ポイント：投稿専用のSupabaseクライアントを「この瞬間」だけ作る
+      // これにより「Auth session missing!」エラーを確実に回避する
+      const authenticatedSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       });
 
-      if (sessionError) {
-        console.error("🚫 Sessionセット失敗:", sessionError.message);
-        throw sessionError;
-      }
+      console.log("🚀 認証済みクライアント作成成功");
 
       let imageUrl = null;
 
-      // 3. 画像がある場合のみアップロード
+      // 2. 画像アップロード
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${userId}-${Math.random()}.${fileExt}`;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await authenticatedSupabase.storage
           .from('post_images')
-          .upload(fileName, imageFile, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          .upload(fileName, imageFile);
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = authenticatedSupabase.storage
           .from('post_images')
           .getPublicUrl(fileName);
         imageUrl = publicUrl;
       }
 
-      // 4. データベースに保存
-      const { data, error: dbError } = await supabase
+      // 3. データベースに保存（認証済みクライアントを使用）
+      const { data, error: dbError } = await authenticatedSupabase
         .from("posts")
         .insert([{ 
           title, 
@@ -93,6 +88,7 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
         setImageFile(null);
         setPreviewUrl(null);
         onPostSuccess(data);
+        console.log("✅ 投稿成功！");
       }
     } catch (error: any) {
       console.error("⚠️ 詳細エラー:", error);
