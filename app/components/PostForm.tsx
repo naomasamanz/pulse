@@ -30,21 +30,77 @@ export default function PostForm({ onPostSuccess }: { onPostSuccess: (post: any)
     e.preventDefault();
     if ((!title && !content) || !userId || isUploading) return;
     setIsUploading(true);
-    console.log("🚀 ボタンが押されたよ！"); // 👈 まずこれが出るかチェック！
-
-    let imageUrl = null;
 
     try {
-      // 🔑 ClerkからSupabase用の合鍵（JWT）をもらう
+      // 1. Clerkからトークンを取得
       const token = await getToken({ template: "supabase" });
-
-      // 👇 これを追加！
-console.log("🎟️ 現在のトークン:", token);
-if (token) console.log("🔍 トークンの最初の10文字:", token.substring(0, 10));
       
       if (!token) {
-        throw new Error("認証トークンの取得に失敗しました。Clerkの設定を確認してね！");
+        console.error("❌ トークンが空です。Clerkのテンプレート名を確認してください。");
+        throw new Error("Token is empty");
       }
+
+      // 🌟 トークンの中身を安全に表示（カッコの閉じ忘れを修正）
+      console.log("🎟️ 取得したトークン:", token);
+      
+      // 2. Supabaseにトークンをセット
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: "",
+      });
+
+      if (sessionError) {
+        console.error("🚫 Sessionセット失敗:", sessionError.message);
+        throw sessionError;
+      }
+
+      let imageUrl = null;
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${userId}-${Math.random()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('post_images')
+          .upload(fileName, imageFile, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(fileName);
+        imageUrl = publicUrl;
+      }
+
+      // 3. データベースに保存
+      const { data, error: dbError } = await supabase
+        .from("posts")
+        .insert([{ 
+          title, 
+          content, 
+          user_id: userId, 
+          image_url: imageUrl 
+        }])
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      if (data) {
+        setTitle("");
+        setContent("");
+        setImageFile(null);
+        setPreviewUrl(null);
+        onPostSuccess(data);
+      }
+    } catch (error: any) {
+      console.error("⚠️ エラー詳細:", error);
+      alert(`エラーが発生しました: ${error.message || "詳細はコンソールを確認してね"}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
       // 📸 画像がある時だけアップロード処理を実行
       if (imageFile) {
